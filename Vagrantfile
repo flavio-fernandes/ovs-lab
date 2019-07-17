@@ -46,8 +46,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/v-root", "1"]
     end
 
-    # Not persistent across reboots!
-    server.vm.provision "shell", inline: "echo 1 > /proc/sys/net/ipv4/ip_forward"
+    server.vm.provision "shell", inline: <<-SCRIPT
+      [ "$(sysctl --values net.ipv4.ip_forward)" -eq "1" ] || {
+        # Persist across reboots
+        echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf # enable ip4 forwarding
+        sysctl -p # apply settings from /etc/sysctl.conf
+      }
+    SCRIPT
 
     server.vm.provision "puppet" do |puppet|
       puppet.manifests_path = "puppet/manifests"
